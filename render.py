@@ -7,22 +7,22 @@ from utils import files
 
 
 def render_jpg(file_):
-    jpg_path = os.path.join('jpg', file_.replace('cr2', 'jpg'))
-    if os.path.exists(jpg_path):
-        os.remove(file_)
-        return "{0} exists, {1} deleted".format(jpg_path, file_)
+    outdir = 'jpg'
+    jpg_path = os.path.join(outdir, file_.replace('cr2', 'jpg'))
     cmd = [
         'ufraw-batch',
         '--out-type=jpg',
         '--compression=100',
-        '--out-path=jpg',
+        "--out-path={0}".format(outdir),
         # "--conf={0}".format(file_.replace('cr2', 'ufraw')),
         '--clip=film',
         "./{0}".format(file_),
         '--silent',
         '--overwrite',
     ]
-    call(cmd)
+    returncode = call(cmd)
+    if returncode == 0 and os.path.exists(jpg_path):
+        os.remove(file_)
     return "{0} written".format(jpg_path)
 
 
