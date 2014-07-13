@@ -1,33 +1,27 @@
 import os
 from multiprocessing import Pool
-from subprocess import call
-import stopwatch
+from subprocess import check_call
 
 from utils import files
 
 
-def render_jpg(file_):
-    outdir = 'jpg'
-    jpg_path = os.path.join(outdir, file_.replace('cr2', 'jpg'))
+def render_jpg(R):
     cmd = [
         'ufraw-batch',
         '--out-type=jpg',
         '--compression=100',
-        "--out-path={0}".format(outdir),
+        "--out-path={0}".format(R['renderdir']),
         # "--conf={0}".format(file_.replace('cr2', 'ufraw')),
         '--clip=film',
-        "./{0}".format(file_),
+        os.path.join(R['copydir'], R['file_']),
         '--silent',
         '--overwrite',
     ]
-    returncode = call(cmd)
-    if returncode == 0 and os.path.exists(jpg_path):
-        os.remove(file_)
-    return "{0} written".format(jpg_path)
+    check_call(cmd)
+    return R
 
 
 if __name__ == '__main__':
-    t = stopwatch.Timer()
     pool = Pool(8)
     raw_files = files('cr2')
     num = len(raw_files)
@@ -37,4 +31,3 @@ if __name__ == '__main__':
         print(fmt_string.format(pos + 1, num, ((pos + 1) / float(num)) * 100))
     pool.close()
     pool.join()
-    print t.elapsed
