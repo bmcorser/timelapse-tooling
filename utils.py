@@ -24,6 +24,23 @@ def mount_of(path):
 
 
 def enough_space(target, destination):
-    'Is there enough space on the destination drive for the target file?'
-    avail = os.statvfs(mount_of(destination)).f_bavail - (4096 * 500)
-    return avail > os.stat(target).st_size
+    '''
+    Is there enough space on the destination drive for the target? Target can
+    be a file or a directory.
+    '''
+    if os.path.isfile(target):
+        target_size = os.stat(target).st_size
+    elif os.path.isdir(target):
+        target_size = dir_size(target)
+    fs = os.statvfs(mount_of(destination))
+    avail = (fs.f_bavail * fs.f_frsize) / 1024
+    return avail > target_size
+
+
+def dir_size(directory):
+    'Return the sum of the sizes of all files in a directory'
+    total_size = 0
+    for dirpath, _, filenames in os.walk(directory):
+        for filename in filenames:
+            total_size += os.path.getsize(os.path.join(dirpath, filename))
+    return total_size

@@ -1,5 +1,6 @@
 from subprocess import check_call
-import os, shutil
+import os
+import shutil
 from celery import Celery
 from utils import enough_space
 from render import render_jpg
@@ -13,26 +14,19 @@ queue_opts = {
 queue = Celery('queue', **queue_opts)
 
 
-@queue.task(bind=True)
-def copy(self, R):
-    target = os.path.join(R['targetdir'], R['file_'])
-    destination = R['copydir']
-    while not enough_space(target, destination):
-        self.retry(countdown=10)
-    check_call(['cp', target, destination])
-    return R
-
-
 @queue.task
-def render(R):
+def copy_render_rm(R):
+    check_call(['cp', os.path.join(R['targetdir'], R['file_']), R['copydir']])
     render_jpg(R)
-    return R
-
-
-@queue.task
-def rm_internal(R):
     os.remove(os.path.join(R['copydir'], R['file_']))
     return R
+
+
+@queue.task(bind=True)
+def setup_task(self, R):
+    while not enough_space(R['targetdir'], R['copydir']):
+        self.retry(countdown=30, max_retries=None)
+    return True
 
 
 @queue.task
@@ -50,6 +44,6 @@ def ffmpeg(Rs):
            '-vendor', 'ap10',
            R['output'])
     check_call(cmd)
-    shutil.rmtree(R['targetdir'])
-    shutil.rmtree(R['copydir'])
+    # shutil.rmtree(R['targetdir'])
+    # shutil.rmtree(R['copydir'])
     return R
