@@ -34,7 +34,7 @@ def enough_space(target, destination):
         target_size = dir_size(target)
     fs = os.statvfs(mount_of(destination))
     avail = (fs.f_bavail * fs.f_frsize) / 1024
-    return avail > target_size
+    return avail > ((target_size / 1024) + 102400)
 
 
 def dir_size(directory):

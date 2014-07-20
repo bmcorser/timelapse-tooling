@@ -1,9 +1,9 @@
 from copy import deepcopy
 import os
 import click
-from celery import chain, group
+from celery import chord
 
-from queue import setup_task, copy_render_rm, ffmpeg
+from queue import copy_render_rm, ffmpeg
 
 EXTPATH = os.environ.get('TL_EXTPATH',
                          '/home/ben/external/video/timelapse')
@@ -18,11 +18,11 @@ def send_messages(R, cr2_list):
         R_.update({'file_': cr2})
         render_tasks.append(copy_render_rm.si(R_))
 
-    click.echo(chain(setup_task.s(R), group(render_tasks), ffmpeg.s())())
+    asyncres = chord(render_tasks)(ffmpeg.s())
+    click.echo(asyncres.id)
 
 
 def run_test(R, cr2_list):
-    setup_task(R)
     render_tasks = list()
     for cr2 in cr2_list:
         R_ = deepcopy(R)
@@ -44,7 +44,7 @@ def cli(date, test):
     except OSError as exc:
         if exc.errno != 17:
             raise
-    cr2_list = filter(lambda f: f.endswith('cr2'), os.listdir(targetdir))[:30]
+    cr2_list = filter(lambda f: f.endswith('cr2'), os.listdir(targetdir))
     click.echo("Processing {0} images for {1}".format(len(cr2_list), date))
 
     R = {

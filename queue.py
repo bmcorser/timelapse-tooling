@@ -3,7 +3,6 @@ import os
 import shutil
 from celery import Celery
 from utils import enough_space
-from render import render_jpg
 
 
 queue_opts = {
@@ -14,26 +13,39 @@ queue_opts = {
 queue = Celery('queue', **queue_opts)
 
 
-@queue.task
-def copy_render_rm(R):
-    check_call(['cp', os.path.join(R['targetdir'], R['file_']), R['copydir']])
-    render_jpg(R)
-    os.remove(os.path.join(R['copydir'], R['file_']))
-    return R
-
-
 @queue.task(bind=True)
-def setup_task(self, R):
+def copy_render_rm(self, R):
+    target = os.path.join(R['targetdir'], R['file_'])
+    destination = os.path.join(R['copydir'], R['file_'])
+    render = [
+        'ufraw-batch',
+        '--out-type=jpg',
+        '--compression=100',
+        "--out-path={0}".format(R['renderdir']),
+        # "--conf={0}".format(file_.replace('cr2', 'ufraw')),
+        '--clip=film',
+        os.path.join(R['copydir'], R['file_']),
+        '--silent',
+        '--overwrite',
+    ]
     while not enough_space(R['targetdir'], R['copydir']):
         self.retry(countdown=30, max_retries=None)
-    return True
+    jpg_filename = R['file_'].replace('cr2', 'jpg')
+    if not os.path.exists(os.path.join(R['renderdir'], jpg_filename)):
+        check_call(['cp', target, destination])
+        check_call(render)
+        os.remove(os.path.join(R['copydir'], R['file_']))
+        print("{0}/{1} rendered".format(R['date'], R['file_']))
+        return R
+    print("{0}/{1} found".format(R['date'], R['file_']))
+    return R
 
 
 @queue.task
 def ffmpeg(Rs):
     R = Rs[0]
     cmd = ('/home/ben/bin/ffmpeg',
-           '-threads', '8',
+           # '-threads', '8',
            '-r', '48',
            '-y',
            '-pattern_type', 'glob',
@@ -45,5 +57,6 @@ def ffmpeg(Rs):
            R['output'])
     check_call(cmd)
     # shutil.rmtree(R['targetdir'])
-    # shutil.rmtree(R['copydir'])
+    shutil.rmtree(R['copydir'])
+    print("{0} video rendered".format(R['date']))
     return R

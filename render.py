@@ -6,18 +6,6 @@ from utils import files
 
 
 def render_jpg(R):
-    cmd = [
-        'ufraw-batch',
-        '--out-type=jpg',
-        '--compression=100',
-        "--out-path={0}".format(R['renderdir']),
-        # "--conf={0}".format(file_.replace('cr2', 'ufraw')),
-        '--clip=film',
-        os.path.join(R['copydir'], R['file_']),
-        '--silent',
-        '--overwrite',
-    ]
-    check_call(cmd)
     return R
 
 
